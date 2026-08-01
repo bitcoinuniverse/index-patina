@@ -3,15 +3,14 @@
  * Vendored dependency integrity check.
  *
  * This indexer depends on @bitcoinuniverse/patina through a packed tarball
- * committed at vendor/bitcoinuniverse-patina-1.0.0.tgz, rather than a local
+ * committed under vendor/, rather than a local
  * file: path into a sibling checkout, so the dependency resolves for anyone
  * who clones this repository on its own.
  *
- * This script recomputes the tarball's SHA-256 and compares it against the
- * hash recorded in SOURCE-PROVENANCE.json, and confirms package.json's
- * dependency line actually points at that tarball. A mismatch means the
- * vendored file was replaced, corrupted, or edited, and the build must not
- * proceed on it silently.
+ * This script recomputes the tarball hashes, checks the package and lockfile
+ * resolutions, and reads the packed package/version/spec metadata back from
+ * the archive. A mismatch means the vendored file or its provenance drifted,
+ * and the build must not proceed on it silently.
  *
  * Run: node scripts/verify-vendor.mjs
  */
@@ -20,13 +19,36 @@ import { createHash } from 'node:crypto';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gunzipSync } from 'node:zlib';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const PROVENANCE_PATH = resolve(ROOT, 'SOURCE-PROVENANCE.json');
 const PACKAGE_JSON_PATH = resolve(ROOT, 'package.json');
+const PACKAGE_LOCK_PATH = resolve(ROOT, 'package-lock.json');
 
 function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
+}
+
+function sha512Integrity(bytes) {
+  return `sha512-${createHash('sha512').update(bytes).digest('base64')}`;
+}
+
+function packedJson(bytes, wantedName) {
+  const tar = gunzipSync(bytes);
+  for (let offset = 0; offset + 512 <= tar.length; ) {
+    const name = tar.toString('utf8', offset, offset + 100).replace(/\0.*$/s, '');
+    if (name.length === 0) break;
+    const sizeText = tar.toString('ascii', offset + 124, offset + 136).replace(/\0.*$/s, '').trim();
+    const size = Number.parseInt(sizeText || '0', 8);
+    if (!Number.isSafeInteger(size) || size < 0) throw new Error(`invalid tar size for ${name}`);
+    const bodyOffset = offset + 512;
+    if (name === wantedName) {
+      return JSON.parse(tar.toString('utf8', bodyOffset, bodyOffset + size));
+    }
+    offset = bodyOffset + Math.ceil(size / 512) * 512;
+  }
+  throw new Error(`${wantedName} is missing from the vendored tarball`);
 }
 
 function fail(problems) {
@@ -66,6 +88,7 @@ function main() {
   }
 
   const packageJson = JSON.parse(readFileSync(PACKAGE_JSON_PATH, 'utf8'));
+  const packageLock = JSON.parse(readFileSync(PACKAGE_LOCK_PATH, 'utf8'));
   const depName = vendored.packageName ?? '@bitcoinuniverse/patina';
   const dep = packageJson?.dependencies?.[depName];
   const expectedDep = `file:${vendored.file}`;
@@ -74,8 +97,50 @@ function main() {
   if (dep !== expectedDep) {
     problems.push(
       `package.json dependencies["${depName}"] is ${JSON.stringify(dep ?? null)}, expected ${JSON.stringify(expectedDep)}. ` +
-        `The dependency must resolve to the vendored tarball, not a local path into a sibling checkout.`,
+      `The dependency must resolve to the vendored tarball, not a local path into a sibling checkout.`,
     );
+  }
+
+  if (provenance?.consensusSurface?.version !== vendored.packageVersion) {
+    problems.push('consensusSurface.version does not match vendoredTarball.packageVersion');
+  }
+  if (provenance?.consensusSurface?.resolution !== expectedDep) {
+    problems.push(`consensusSurface.resolution must be ${JSON.stringify(expectedDep)}`);
+  }
+  if (!/^[0-9a-f]{40}$/.test(provenance?.consensusSurface?.sourceCommit ?? '')) {
+    problems.push('consensusSurface.sourceCommit must pin a full lowercase Git commit');
+  }
+  if (!/^[0-9a-f]{64}$/.test(vendored.specSha256 ?? '')) {
+    problems.push('vendoredTarball.specSha256 must pin a lowercase SHA-256 digest');
+  }
+
+  try {
+    const packedManifest = packedJson(bytes, 'package/package.json');
+    const packedVectors = packedJson(bytes, 'package/vectors/manifest.json');
+    if (packedManifest.name !== depName) {
+      problems.push(`packed package name is ${JSON.stringify(packedManifest.name)}, expected ${JSON.stringify(depName)}`);
+    }
+    if (packedManifest.version !== vendored.packageVersion) {
+      problems.push(
+        `packed package version is ${JSON.stringify(packedManifest.version)}, expected ${JSON.stringify(vendored.packageVersion)}`,
+      );
+    }
+    if (packedVectors.specSha256 !== vendored.specSha256) {
+      problems.push(
+        `packed vectors specSha256 is ${JSON.stringify(packedVectors.specSha256)}, expected ${JSON.stringify(vendored.specSha256)}`,
+      );
+    }
+  } catch (error) {
+    problems.push(`could not inspect the vendored tarball: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
+  const locked = packageLock?.packages?.[`node_modules/${depName}`];
+  if (locked?.version !== vendored.packageVersion || locked?.resolved !== expectedDep) {
+    problems.push('package-lock.json does not pin the recorded package version and vendored resolution');
+  }
+  const expectedIntegrity = sha512Integrity(bytes);
+  if (locked?.integrity !== expectedIntegrity) {
+    problems.push('package-lock.json integrity does not match the vendored tarball bytes');
   }
 
   if (problems.length > 0) {

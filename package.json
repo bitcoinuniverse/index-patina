@@ -1,6 +1,6 @@
 {
   "name": "@bitcoinuniverse/index-patina",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Deterministic Bitcoin indexer and read API for the PATINA protocol",
   "type": "module",
@@ -32,7 +32,7 @@
     "verify": "npm run verify:vendor && npm run typecheck && npm run build && npm test"
   },
   "dependencies": {
-    "@bitcoinuniverse/patina": "file:vendor/bitcoinuniverse-patina-1.0.0.tgz",
+    "@bitcoinuniverse/patina": "file:vendor/bitcoinuniverse-patina-1.1.0.tgz",
     "better-sqlite3": "13.0.2"
   },
   "devDependencies": {

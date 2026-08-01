@@ -31,6 +31,7 @@ export type {
 
 export type {
   ApplyResult,
+  CommitLeafMode,
   CommitInput,
   DecodeResult,
   KeepEntry,
@@ -51,7 +52,10 @@ export {
   artifactId,
   attestationMessage,
   buildCommitLeafScript,
+  buildCommitLeafScriptForMode,
+  buildLegacyCommitLeafScript,
   buildMarkerScript,
+  buildReducedDataCommitLeafScript,
   commitCommitment,
   decodeMarker,
   decodeScriptPubKey,
@@ -60,6 +64,7 @@ export {
   isTaprootScriptPubKey,
   outpointKey,
   parseCommitLeafScript,
+  parseCommitLeafScriptWithMode,
   parseOutpointKey,
   scanScriptPubKey,
   txidToWire,

@@ -14,9 +14,10 @@
 import { createHash } from 'node:crypto';
 
 import {
-  buildCommitLeafScript,
+  buildCommitLeafScriptForMode,
   buildMarkerScript,
   commitCommitment,
+  type CommitLeafMode,
   type DeploymentRecord,
 } from '../../src/protocol.js';
 import type { OfflineChain, RpcBlock, RpcTransaction, RpcVin, RpcVout } from '../../src/rpc.js';
@@ -100,9 +101,13 @@ export function coinbaseOutpoint(height: number, branch = 'a'): InSpec {
 }
 
 /** Build the witness stack of a commit leaf reveal: signature, leaf, control block. */
-export function commitWitness(claimantXOnly: string, saltHex: string): string[] {
+export function commitWitness(
+  claimantXOnly: string,
+  saltHex: string,
+  mode: CommitLeafMode = 'reduced-data envelope',
+): string[] {
   const commitment = commitCommitment(claimantXOnly, saltHex).toString('hex');
-  const leaf = buildCommitLeafScript(claimantXOnly, commitment).toString('hex');
+  const leaf = buildCommitLeafScriptForMode(claimantXOnly, commitment, mode).toString('hex');
   const control = `c0${claimantXOnly}`;
   return ['00'.repeat(64), leaf, control];
 }
@@ -187,7 +192,10 @@ export interface LifecycleChain {
  * A chain that walks one artifact through every state the protocol defines and
  * records one example of each invalid event the indexer is expected to store.
  */
-export function buildLifecycleChain(deployment: DeploymentRecord): LifecycleChain {
+export function buildLifecycleChain(
+  deployment: DeploymentRecord,
+  options: { readonly commitLeafMode?: CommitLeafMode } = {},
+): LifecycleChain {
   const hOpen = deployment.hOpen as number;
   const minAge = deployment.commitMinAge;
 
@@ -214,6 +222,7 @@ export function buildLifecycleChain(deployment: DeploymentRecord): LifecycleChai
   const saltB = salt('B');
   const saltD = salt('D');
   const saltE = salt('E');
+  const commitLeafMode = options.commitLeafMode ?? 'reduced-data envelope';
 
   const commitA = makeTx('commit-a', [coinbaseOutpoint(190)], [{ sats: 200000, script: p2trScript(keyA) }]);
   const commitB = makeTx('commit-b', [coinbaseOutpoint(191)], [{ sats: 200000, script: p2trScript(keyB) }]);
@@ -223,7 +232,7 @@ export function buildLifecycleChain(deployment: DeploymentRecord): LifecycleChai
 
   const seedA = makeTx(
     'seed-a',
-    [{ txid: commitA.txid, vout: 0, witness: commitWitness(keyA, saltA) }],
+    [{ txid: commitA.txid, vout: 0, witness: commitWitness(keyA, saltA, commitLeafMode) }],
     [
       { sats: 150000, script: p2wpkhScript('carrier-a') },
       { sats: 0, script: seedMarkerScript(saltA, 0) },
@@ -233,7 +242,7 @@ export function buildLifecycleChain(deployment: DeploymentRecord): LifecycleChai
 
   const seedB = makeTx(
     'seed-b',
-    [{ txid: commitB.txid, vout: 0, witness: commitWitness(keyB, saltB) }],
+    [{ txid: commitB.txid, vout: 0, witness: commitWitness(keyB, saltB, commitLeafMode) }],
     [
       { sats: 120000, script: p2wpkhScript('carrier-b') },
       { sats: 0, script: seedMarkerScript(saltB, 0) },
@@ -243,7 +252,7 @@ export function buildLifecycleChain(deployment: DeploymentRecord): LifecycleChai
 
   const seedD = makeTx(
     'seed-d',
-    [{ txid: commitD.txid, vout: 0, witness: commitWitness(keyD, saltD) }],
+    [{ txid: commitD.txid, vout: 0, witness: commitWitness(keyD, saltD, commitLeafMode) }],
     [
       { sats: 110000, script: p2wpkhScript('carrier-d') },
       { sats: 0, script: seedMarkerScript(saltD, 0) },
@@ -255,7 +264,7 @@ export function buildLifecycleChain(deployment: DeploymentRecord): LifecycleChai
   // is rejected with SEED_CARRIER_BELOW_MIN and creates nothing.
   const seedE = makeTx(
     'seed-e',
-    [{ txid: commitE.txid, vout: 0, witness: commitWitness(keyE, saltE) }],
+    [{ txid: commitE.txid, vout: 0, witness: commitWitness(keyE, saltE, commitLeafMode) }],
     [
       { sats: 50000, script: p2wpkhScript('carrier-e') },
       { sats: 0, script: seedMarkerScript(saltE, 0) },

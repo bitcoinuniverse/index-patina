@@ -41,18 +41,26 @@ needs the height of the block that created it, and that lookup goes through
 
 ## Install and build
 
-The protocol package is currently a relative dependency, so it has to be built
-first.
+The exact protocol package is committed under `vendor/` and pinned by SHA-256
+in `SOURCE-PROVENANCE.json`. A sibling PATINA checkout is not required.
 
 ```sh
-cd ../../protocols/patina
 npm install
-npm run build
-
-cd index-patina
-npm install
+npm run verify:vendor
 npm run build
 ```
+
+## BIP-110 commit leaves
+
+PATINA 1.1.0 constructs new reveals with the reduced-data leaf
+`<claimant> OP_CHECKSIG <commitment> OP_DROP`. Its parser permanently accepts
+that leaf and the historical `OP_0 OP_IF ... OP_ENDIF` envelope. The indexer
+does not rewrite or height-gate either representation: both produce the same
+claimant, commitment, artifact ID, events and state roots.
+
+The protocol package version is stamped on each indexed block. An existing
+database written by PATINA 1.0.0 therefore fails closed after this upgrade;
+run `index-patina reindex` to rebuild it with the dual parser.
 
 ## Configure
 
@@ -257,8 +265,8 @@ database is replaced.
 
 ## Docker
 
-The image build needs both this repository and the protocol package in the
-context. `docker-compose.yml` already sets that up.
+The image builds from this repository alone because the pinned protocol
+package is vendored. `docker-compose.yml` already uses that context.
 
 ```sh
 docker compose up -d indexer              # indexer only, point it at your node

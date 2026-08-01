@@ -1,7 +1,7 @@
 # PATINA indexer image.
 #
 # The dependency on @bitcoinuniverse/patina resolves from a tarball vendored
-# inside this repository (vendor/bitcoinuniverse-patina-1.0.0.tgz), so the build
+# inside this repository (vendor/bitcoinuniverse-patina-1.1.0.tgz), so the build
 # context is this repository and nothing else.
 #
 # Build from the repository root:

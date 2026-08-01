@@ -62,6 +62,16 @@ the SEED was accepted and `REJECTED` when a qualifying leaf was revealed but the
 SEED failed. `POST /safety/outpoints` also consults the mempool overlay, so an
 unconfirmed SEED lets the endpoint flag a commit outpoint before it confirms.
 
+### Commit-leaf encoding is not used as an identity input
+
+PATINA 1.1.0 makes the reduced-data leaf the construction default and retains
+permanent parsing for the historical conditional envelope. This indexer passes
+the revealed witness to that dual parser at every height. It does not impose a
+local activation height or derive identity from the serialization mode, so a
+legacy and reduced-data reveal with otherwise identical protocol facts produce
+the same artifact ID, events and state root. The regression suite indexes and
+replays both complete histories and compares their IDs and per-block roots.
+
 ### The census definition
 
 The baseline names a "deterministic survival table per 2016 block epoch" without
