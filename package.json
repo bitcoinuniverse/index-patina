@@ -1,0 +1,43 @@
+{
+  "name": "@bitcoinuniverse/index-patina",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Deterministic Bitcoin indexer and read API for the PATINA protocol",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "bin": {
+    "index-patina": "bin/index-patina.mjs"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "README.md",
+    "SECURITY.md",
+    "LICENSE",
+    "SOURCE-PROVENANCE.json"
+  ],
+  "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "tsc -p tsconfig.build.json",
+    "build:test": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "pretest": "npm run build:test",
+    "test": "node --test --test-reporter=spec \"dist/test/*.test.js\"",
+    "start": "node bin/index-patina.mjs serve",
+    "sync": "node bin/index-patina.mjs sync",
+    "verify:vendor": "node scripts/verify-vendor.mjs",
+    "verify": "npm run verify:vendor && npm run typecheck && npm run build && npm test"
+  },
+  "dependencies": {
+    "@bitcoinuniverse/patina": "file:vendor/bitcoinuniverse-patina-1.0.0.tgz",
+    "better-sqlite3": "13.0.2"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "7.6.13",
+    "@types/node": "24.10.1",
+    "typescript": "5.9.3"
+  }
+}

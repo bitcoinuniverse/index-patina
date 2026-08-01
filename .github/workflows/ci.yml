@@ -1,0 +1,74 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: indexers/index-patina
+    steps:
+      - name: Check out the indexer
+        uses: actions/checkout@v4
+        with:
+          path: indexers/index-patina
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Verify vendored package
+        run: npm run verify:vendor
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+      - name: Command line smoke test
+        env:
+          PATINA_NETWORK: regtest
+          PATINA_RPC_OFFLINE: 'true'
+          PATINA_DATA_DIR: ${{ runner.temp }}/patina-ci
+          PATINA_LOG_LEVEL: silent
+        run: |
+          node bin/index-patina.mjs status --json
+          node bin/index-patina.mjs verify
+
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out the indexer
+        uses: actions/checkout@v4
+        with:
+          path: indexers/index-patina
+
+      - name: Build the image
+        run: docker build -f indexers/index-patina/Dockerfile -t index-patina:ci .
+
+      - name: Run the command line inside the image
+        run: |
+          docker run --rm -e PATINA_NETWORK=regtest -e PATINA_RPC_OFFLINE=true \
+            -e PATINA_LOG_LEVEL=silent index-patina:ci status --json

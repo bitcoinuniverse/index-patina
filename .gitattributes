@@ -1,0 +1,8 @@
+# The vendored protocol package is verified by sha256. Line ending conversion
+# would change file hashes, so every text file checks out with LF everywhere.
+* text=auto eol=lf
+
+*.tgz binary
+*.sqlite binary
+*.png binary
+*.ico binary

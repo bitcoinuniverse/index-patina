@@ -1,0 +1,46 @@
+{
+  "schema": "bitcoin-universe-source-provenance",
+  "component": "@bitcoinuniverse/index-patina",
+  "implementation": "independently authored indexer and read API for the PATINA protocol",
+  "consensusSurface": {
+    "package": "@bitcoinuniverse/patina",
+    "version": "1.0.0",
+    "resolution": "file:vendor/bitcoinuniverse-patina-1.0.0.tgz",
+    "vendoredTarball": {
+      "file": "vendor/bitcoinuniverse-patina-1.0.0.tgz",
+      "sha256": "a5f7f6677be14f059fc5287e46fb44ccbf89275b4ff7f1e9d9858c091343662c",
+      "packageName": "@bitcoinuniverse/patina",
+      "packageVersion": "1.0.0",
+      "specSha256": "3503126ca9a9c61145459cbbac18d39bb8bc3ecf743e3e0fa68455bbac91b796",
+      "verifiedBy": "scripts/verify-vendor.mjs"
+    },
+    "note": "Vendored as a packed tarball committed to this repository, so the dependency resolves for anyone who clones this repository without also checking out the protocol repository at a matching relative path. scripts/verify-vendor.mjs recomputes the tarball's sha256 on every verify run and fails if it drifts from vendoredTarball.sha256 above.",
+    "importedThrough": "src/protocol.ts",
+    "provides": [
+      "frozen constants and the reason code registry",
+      "marker codec and scriptPubKey scanning",
+      "identity derivations, commit leaf script, artifact id, attestation message",
+      "SEED and KEEP validation and the default successor rule",
+      "the deterministic state reducer applyBlock and replay",
+      "canonical event, artifact and state root encodings",
+      "depth and tier computation",
+      "deployment record loading and the founding window state machine"
+    ]
+  },
+  "claims": {
+    "copiedProtocolLogic": false,
+    "reimplementedConsensusRules": false,
+    "externalRuntimeEvidence": false,
+    "mockDataInApiResponses": false
+  },
+  "notes": [
+    "No protocol logic is copied into this repository. The entire consensus surface available to this indexer comes only from the vendored @bitcoinuniverse/patina package named above; src/protocol.ts imports it and defines no rules of its own.",
+    "Every consensus decision is a call into @bitcoinuniverse/patina. src/protocol.ts is a re-export only and contains no rules.",
+    "src/facts.ts reads a block back through the same package to recover storage details the state model does not carry, such as which input revealed the commit leaf. It makes no judgements of its own.",
+    "src/store.ts recomputes aggregate counters when rebuilding a snapshot from SQL. The result is checked against the state root the reducer wrote for the tip block, so a disagreement stops the process instead of being served."
+  ],
+  "references": [
+    "PATINA implementation baseline, frozen constants and contracts",
+    "index-tandem architecture pattern"
+  ]
+}

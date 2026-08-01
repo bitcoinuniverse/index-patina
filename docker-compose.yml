@@ -1,0 +1,66 @@
+# PATINA indexer with an optional Bitcoin Core alongside it.
+#
+# Run from this directory. The build context points at the repository root so
+# the Dockerfile's COPY paths (indexers/index-patina/...) resolve; the image
+# does not need a sibling checkout of the protocol repository, because the
+# @bitcoinuniverse/patina dependency is vendored inside indexers/index-patina.
+#
+#   docker compose up -d indexer                       indexer only
+#   docker compose --profile core up -d                indexer and a regtest Core
+#
+# The Core service is regtest by default. Point PATINA_BITCOIN_RPC_URL at your
+# own node and drop the profile if you already run one.
+
+name: patina
+
+services:
+  indexer:
+    build:
+      context: ../..
+      dockerfile: indexers/index-patina/Dockerfile
+    image: index-patina:local
+    restart: unless-stopped
+    command: ["serve"]
+    environment:
+      PATINA_NETWORK: ${PATINA_NETWORK:-regtest}
+      PATINA_MAINNET_AUTHORIZED: ${PATINA_MAINNET_AUTHORIZED:-false}
+      PATINA_BITCOIN_RPC_URL: ${PATINA_BITCOIN_RPC_URL:-http://core:18443}
+      PATINA_BITCOIN_RPC_USER: ${PATINA_BITCOIN_RPC_USER:-patina}
+      PATINA_BITCOIN_RPC_PASSWORD: ${PATINA_BITCOIN_RPC_PASSWORD:-patina}
+      PATINA_API_HOST: 0.0.0.0
+      PATINA_API_PORT: 4180
+      PATINA_DATA_DIR: /var/lib/patina
+      PATINA_LOG_LEVEL: ${PATINA_LOG_LEVEL:-info}
+    ports:
+      - "${PATINA_API_BIND:-127.0.0.1}:4180:4180"
+    volumes:
+      - patina-data:/var/lib/patina
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  core:
+    profiles: ["core"]
+    image: ${BITCOIN_IMAGE:-bitcoin/bitcoin:29.0}
+    restart: unless-stopped
+    command:
+      - -regtest=1
+      - -server=1
+      - -txindex=1
+      - -rpcbind=0.0.0.0
+      - -rpcallowip=0.0.0.0/0
+      - -rpcuser=${PATINA_BITCOIN_RPC_USER:-patina}
+      - -rpcpassword=${PATINA_BITCOIN_RPC_PASSWORD:-patina}
+      - -fallbackfee=0.0002
+    expose:
+      - "18443"
+    volumes:
+      - core-data:/home/bitcoin/.bitcoin
+
+volumes:
+  patina-data:
+  core-data:
