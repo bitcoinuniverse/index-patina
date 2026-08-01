@@ -1,9 +1,9 @@
 # PATINA indexer with an optional Bitcoin Core alongside it.
 #
 # Run from this directory. The build context points at the repository root so
-# the Dockerfile's COPY paths (indexers/index-patina/...) resolve; the image
+# the Dockerfile builds from this repository root; the image
 # does not need a sibling checkout of the protocol repository, because the
-# @bitcoinuniverse/patina dependency is vendored inside indexers/index-patina.
+# @bitcoinuniverse/patina dependency is vendored inside this repository.
 #
 #   docker compose up -d indexer                       indexer only
 #   docker compose --profile core up -d                indexer and a regtest Core
@@ -16,8 +16,7 @@ name: patina
 services:
   indexer:
     build:
-      context: ../..
-      dockerfile: indexers/index-patina/Dockerfile
+      context: .
     image: index-patina:local
     restart: unless-stopped
     command: ["serve"]

@@ -49,7 +49,7 @@ cd ../../protocols/patina
 npm install
 npm run build
 
-cd ../../indexers/index-patina
+cd index-patina
 npm install
 npm run build
 ```

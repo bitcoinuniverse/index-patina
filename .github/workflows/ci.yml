@@ -19,12 +19,9 @@ jobs:
     timeout-minutes: 20
     defaults:
       run:
-        working-directory: indexers/index-patina
     steps:
       - name: Check out the indexer
         uses: actions/checkout@v4
-        with:
-          path: indexers/index-patina
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -62,11 +59,9 @@ jobs:
     steps:
       - name: Check out the indexer
         uses: actions/checkout@v4
-        with:
-          path: indexers/index-patina
 
       - name: Build the image
-        run: docker build -f indexers/index-patina/Dockerfile -t index-patina:ci .
+        run: docker build -t index-patina:ci .
 
       - name: Run the command line inside the image
         run: |
